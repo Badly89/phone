@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Диагностика SeaTable</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .test-panel {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    .log {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+
+    .log-entry {
+      margin: 5px 0;
+      border-left: 3px solid;
+      padding-left: 10px;
+    }
+
+    .log-success {
+      border-left-color: #27ae60;
+      color: #2ecc71;
+    }
+
+    .log-error {
+      border-left-color: #e74c3c;
+      color: #e74c3c;
+    }
+
+    .log-info {
+      border-left-color: #3498db;
+      color: #3498db;
+    }
+
+    .log-warning {
+      border-left-color: #f39c12;
+      color: #f39c12;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="test-panel">
+    <h1>🔧 Диагностика подключения к SeaTable</h1>
+
+    <div class="form-group">
+      <label>Сервер SeaTable</label>
+      <input type="text" id="serverUrl" placeholder="https://ditable.yanao.ru" value="https://ditable.yanao.ru">
+    </div>
+
+    <div class="form-group">
+      <label>API Token</label>
+      <input type="password" id="apiToken" placeholder="Введите API токен">
+    </div>
+
+    <div class="form-group">
+      <label>ID базы / Название таблицы</label>
+      <input type="text" id="baseId" placeholder="phones или ID базы">
+    </div>
+
+    <div class="form-group">
+      <label>Название таблицы</label>
+      <input type="text" id="tableName" placeholder="phones" value="phones">
+    </div>
+
+    <div class="form-group">
+      <label>ID рабочего пространства</label>
+      <input type="text" id="workspaceId" placeholder="256" value="256">
+    </div>
+
+    <button onclick="runDiagnostics()">🚀 Запустить диагностику</button>
+    <button onclick="clearLog()">🗑️ Очистить лог</button>
+
+    <div class="log" id="log">
+      <div class="log-entry log-info">📋 Готов к диагностике. Нажмите "Запустить диагностику"</div>
+    </div>
+  </div>
+
+  <script>
+    function addLog(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+      logDiv.appendChild(entry);
+      entry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '<div class="log-entry log-info">📋 Лог очищен</div>';
+    }
+
+    async function runDiagnostics() {
+      clearLog();
+      addLog('🔍 Начинаем диагностику подключения...', 'info');
+
+      const config = {
+        serverUrl: document.getElementById('serverUrl').value.trim(),
+        apiToken: document.getElementById('apiToken').value.trim(),
+        baseId: document.getElementById('baseId').value.trim(),
+        tableName: document.getElementById('tableName').value.trim(),
+        workspaceId: document.getElementById('workspaceId').value.trim()
+      };
+
+      if (!config.serverUrl || !config.apiToken) {
+        addLog('❌ Заполните сервер и API токен!', 'error');
+        return;
+      }
+
+      addLog(`📡 Сервер: ${config.serverUrl}`, 'info');
+      addLog(`🔑 Токен: ${config.apiToken.substring(0, 10)}...`, 'info');
+
+      // Тест 1: Проверка CORS и доступности сервера
+      addLog('📡 Тест 1: Проверка доступности сервера...', 'info');
+      try {
+        const response = await fetch(config.serverUrl, { mode: 'no-cors' });
+        addLog('✅ Сервер доступен (CORS может блокировать, но это нормально)', 'success');
+      } catch (error) {
+        addLog(`⚠️ Сервер не отвечает: ${error.message}`, 'warning');
+      }
+
+      // Тест 2: Проверка различных эндпоинтов
+      const endpoints = [
+        { name: 'API v1', url: `${config.serverUrl}/api/v1/dtables/` },
+        { name: 'dtable-server', url: `${config.serverUrl}/dtable-server/api/v1/dtables/` },
+        { name: 'dtable-db', url: `${config.serverUrl}/dtable-db/api/v1/sql/` },
+        { name: 'workspace', url: `${config.serverUrl}/workspace/${config.workspaceId}/dtable/${config.tableName}/` }
+      ];
+
+      addLog('📡 Тест 2: Проверка эндпоинтов...', 'info');
+
+      for (const endpoint of endpoints) {
+        addLog(`  🔍 Проверяем ${endpoint.name}: ${endpoint.url}`, 'info');
+        try {
+          const response = await fetch(endpoint.url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Token ${config.apiToken}`,
+              'Accept': 'application/json'
+            }
+          });
+
+          addLog(`    → Статус: ${response.status} ${response.statusText}`,
+            response.ok ? 'success' : 'warning');
+
+          if (response.ok) {
+            const text = await response.text();
+            addLog(`    → Получено данных: ${text.length} символов`, 'success');
+            try {
+              const json = JSON.parse(text);
+              addLog(`    → JSON валиден, ключи: ${Object.keys(json).join(', ')}`, 'success');
+            } catch (e) {
+              addLog(`    → Ответ не JSON: ${text.substring(0, 100)}`, 'warning');
+            }
+          }
+        } catch (error) {
+          addLog(`    ❌ Ошибка: ${error.message}`, 'error');
+        }
+      }
+
+      // Тест 3: Попытка получить данные через SQL
+      addLog('📡 Тест 3: Попытка SQL запроса...', 'info');
+      const sqlUrl = `${config.serverUrl}/dtable-db/api/v1/sql/`;
+      const sqlQueries = [
+        `SELECT * FROM ${config.tableName} LIMIT 1`,
+        `SELECT * FROM phones LIMIT 1`,
+        `SHOW TABLES`
+      ];
+
+      for (const sql of sqlQueries) {
+        addLog(`  🔍 SQL: ${sql}`, 'info');
+        try {
+          const response = await fetch(sqlUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Token ${config.apiToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ sql })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            addLog(`  ✅ SQL выполнен, результат: ${JSON.stringify(data).substring(0, 200)}`, 'success');
+            break;
+          } else {
+            const error = await response.text();
+            addLog(`  ⚠️ Ошибка SQL: ${response.status} - ${error.substring(0, 100)}`, 'warning');
+          }
+        } catch (error) {
+          addLog(`  ❌ Ошибка: ${error.message}`, 'error');
+        }
+      }
+
+      // Тест 4: Получение информации о базе
+      addLog('📡 Тест 4: Получение информации о базе...', 'info');
+      try {
+        const response = await fetch(`${config.serverUrl}/api/v1/dtables/${config.baseId}/`, {
+          headers: { 'Authorization': `Token ${config.apiToken}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          addLog(`✅ Информация о базе получена: ${JSON.stringify(data).substring(0, 300)}`, 'success');
+        } else {
+          addLog(`⚠️ Не удалось получить информацию о базе: ${response.status}`, 'warning');
+        }
+      } catch (error) {
+        addLog(`❌ Ошибка: ${error.message}`, 'error');
+      }
+
+      addLog('🏁 Диагностика завершена!', 'success');
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,380 @@
+/**
+ * Класс для работы с SeaTable API
+ */
+class SeaTableAPI {
+  constructor(config) {
+    this.serverUrl = config.serverUrl; // например: https://cloud.seatable.io
+    this.apiToken = config.apiToken;
+    this.baseId = config.baseId;
+    this.tableName = config.tableName || 'Сотрудники';
+    this.dtableDbUrl = `${this.serverUrl}/dtable-db/api/v1`;
+    this.dtableServerUrl = `${this.serverUrl}/api/v1`;
+  }
+
+  /**
+   * Получение информации о базе
+   */
+  async getBaseInfo() {
+    try {
+      const response = await fetch(`${this.dtableServerUrl}/dtables/${this.baseId}/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Ошибка получения информации о базе:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение всех сотрудников из SeaTable
+   */
+  async getAllEmployees() {
+    try {
+      // Используем dtable-db API для SQL запросов
+      const sql = `SELECT * FROM ${this.tableName} WHERE Активен = true OR Активен IS NULL`;
+
+      const response = await fetch(`${this.dtableDbUrl}/sql/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Преобразуем данные в формат нашего приложения
+      return result.results.map(row => this.mapSeatRowToEmployee(row));
+    } catch (error) {
+      console.error('Ошибка получения сотрудников из SeaTable:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получение сотрудника по ID
+   */
+  async getEmployeeById(id) {
+    try {
+      const sql = `SELECT * FROM ${this.tableName} WHERE ID = ${id}`;
+
+      const response = await fetch(`${this.dtableDbUrl}/sql/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.results && result.results.length > 0) {
+        return this.mapSeatRowToEmployee(result.results[0]);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Ошибка получения сотрудника:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Добавление нового сотрудника
+   */
+  async addEmployee(employee) {
+    try {
+      const rowData = this.mapEmployeeToSeatRow(employee);
+
+      const response = await fetch(`${this.dtableServerUrl}/dtables/${this.baseId}/rows/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          table_name: this.tableName,
+          row: rowData
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Сотрудник добавлен в SeaTable:', result);
+      return result;
+    } catch (error) {
+      console.error('Ошибка добавления сотрудника:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Обновление сотрудника
+   */
+  async updateEmployee(employee) {
+    try {
+      const rowData = this.mapEmployeeToSeatRow(employee);
+
+      const response = await fetch(`${this.dtableServerUrl}/dtables/${this.baseId}/rows/`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          table_name: this.tableName,
+          row_id: employee.seatableRowId,
+          row: rowData
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Сотрудник обновлен в SeaTable:', result);
+      return result;
+    } catch (error) {
+      console.error('Ошибка обновления сотрудника:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Удаление сотрудника
+   */
+  async deleteEmployee(seatRowId, name) {
+    try {
+      const response = await fetch(`${this.dtableServerUrl}/dtables/${this.baseId}/rows/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          table_name: this.tableName,
+          row_ids: [seatRowId]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      console.log(`Сотрудник "${name}" удален из SeaTable`);
+      return true;
+    } catch (error) {
+      console.error('Ошибка удаления сотрудника:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Поиск сотрудников
+   */
+  async searchEmployees(searchTerm) {
+    try {
+      const sql = `SELECT * FROM ${this.tableName} 
+                         WHERE ФИО LIKE '%${searchTerm}%' 
+                         OR Должность LIKE '%${searchTerm}%'
+                         OR Телефон LIKE '%${searchTerm}%'
+                         OR Email LIKE '%${searchTerm}%'
+                         OR "Структурное подразделение" LIKE '%${searchTerm}%'
+                         OR "Отдел/Сектор" LIKE '%${searchTerm}%'
+                         AND (Активен = true OR Активен IS NULL)`;
+
+      const response = await fetch(`${this.dtableDbUrl}/sql/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.results.map(row => this.mapSeatRowToEmployee(row));
+    } catch (error) {
+      console.error('Ошибка поиска сотрудников:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получение уникальных структурных подразделений
+   */
+  async getStructuralUnits() {
+    try {
+      const sql = `SELECT DISTINCT "Структурное подразделение" FROM ${this.tableName} 
+                         WHERE "Структурное подразделение" IS NOT NULL 
+                         AND "Структурное подразделение" != ''`;
+
+      const response = await fetch(`${this.dtableDbUrl}/sql/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.results.map(row => row['Структурное подразделение']).filter(Boolean);
+    } catch (error) {
+      console.error('Ошибка получения подразделений:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получение уникальных юридических лиц
+   */
+  async getLegalEntities() {
+    try {
+      const sql = `SELECT DISTINCT "Юридическое лицо" FROM ${this.tableName} 
+                         WHERE "Юридическое лицо" IS NOT NULL 
+                         AND "Юридическое лицо" != ''`;
+
+      const response = await fetch(`${this.dtableDbUrl}/sql/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.results.map(row => row['Юридическое лицо']).filter(Boolean);
+    } catch (error) {
+      console.error('Ошибка получения юрлиц:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получение статистики
+   */
+  async getStats() {
+    try {
+      const sql = `SELECT 
+                            COUNT(*) as total,
+                            COUNT(DISTINCT "Структурное подразделение") as departments,
+                            COUNT(DISTINCT "Юридическое лицо") as legalEntities
+                         FROM ${this.tableName} 
+                         WHERE Активен = true OR Активен IS NULL`;
+
+      const response = await fetch(`${this.dtableDbUrl}/sql/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.results && result.results.length > 0) {
+        return result.results[0];
+      }
+      return { total: 0, departments: 0, legalEntities: 0 };
+    } catch (error) {
+      console.error('Ошибка получения статистики:', error);
+      return { total: 0, departments: 0, legalEntities: 0 };
+    }
+  }
+
+  /**
+   * Преобразование строки SeaTable в формат сотрудника
+   */
+  mapSeatRowToEmployee(row) {
+    return {
+      id: row.ID,
+      seatableRowId: row._id || row.id,
+      name: row['ФИО'] || '',
+      position: row['Должность'] || '',
+      phone: row['Телефон'] || '',
+      internalPhone: row['Внутренний номер'] || '',
+      email: row['Email'] || '',
+      legalEntity: row['Юридическое лицо'] || '',
+      structuralUnit: row['Структурное подразделение'] || '',
+      sector: row['Отдел/Сектор'] || '',
+      office: row['Кабинет'] || '',
+      workHours: row['Часы работы'] || '',
+      additional: row['Дополнительно'] || '',
+      isActive: row['Активен'] !== false,
+      updatedAt: row['_mtime'] || new Date().toISOString(),
+      createdAt: row['_ctime'] || new Date().toISOString()
+    };
+  }
+
+  /**
+   * Преобразование сотрудника в формат SeaTable
+   */
+  mapEmployeeToSeatRow(employee) {
+    return {
+      'ФИО': employee.name,
+      'Должность': employee.position,
+      'Телефон': employee.phone,
+      'Внутренний номер': employee.internalPhone || '',
+      'Email': employee.email || '',
+      'Юридическое лицо': employee.legalEntity || '',
+      'Структурное подразделение': employee.structuralUnit || '',
+      'Отдел/Сектор': employee.sector || '',
+      'Кабинет': employee.office || '',
+      'Часы работы': employee.workHours || '',
+      'Дополнительно': employee.additional || '',
+      'Активен': employee.isActive !== false
+    };
+  }
+}
+
+// Создаем экземпляр API с настройками
+const seatableConfig = {
+  serverUrl: 'https://cloud.seatable.io', // Замените на ваш URL
+  apiToken: 'YOUR_API_TOKEN_HERE', // Вставьте ваш API токен
+  baseId: 'YOUR_BASE_ID_HERE', // Вставьте ID вашей базы
+  tableName: 'Сотрудники'
+};
+
+const seatableAPI = new SeaTableAPI(seatableConfig);
