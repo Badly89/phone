@@ -1,9 +1,10 @@
-// app.js - Полная версия с работающими фильтрами и модальным окном
+import seatableLoader from './seatable-loader.js';
 
 class PhoneDirectory {
     constructor() {
         this.employees = [];
         this.filteredEmployees = [];
+        this.allEmployees = [];
         
         // DOM элементы
         this.employeesGrid = document.getElementById('employeesGrid');
@@ -26,7 +27,6 @@ class PhoneDirectory {
     }
 
     async init() {
-        console.log('Инициализация приложения...');
         this.bindEvents();
         await this.loadEmployees();
         this.initModal();
@@ -37,29 +37,20 @@ class PhoneDirectory {
         
         const self = this;
         
-        // Закрытие по крестику
         const closeBtn = this.modal.querySelector('.modal-close');
         if (closeBtn) {
-            closeBtn.removeEventListener('click', this.closeModalHandler);
-            this.closeModalHandler = () => self.closeModal();
-            closeBtn.addEventListener('click', this.closeModalHandler);
+            closeBtn.onclick = () => self.closeModal();
         }
         
-        // Закрытие по клику на фон
-        this.modal.removeEventListener('click', this.modalClickHandler);
-        this.modalClickHandler = (e) => { 
+        this.modal.onclick = (e) => { 
             if (e.target === self.modal) self.closeModal(); 
         };
-        this.modal.addEventListener('click', this.modalClickHandler);
         
-        // Закрытие по Escape
-        document.removeEventListener('keydown', this.escapeHandler);
-        this.escapeHandler = (e) => {
+        document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && self.modal && self.modal.classList.contains('active')) {
                 self.closeModal();
             }
-        };
-        document.addEventListener('keydown', this.escapeHandler);
+        });
     }
 
     lockBodyScroll() {
@@ -75,84 +66,174 @@ class PhoneDirectory {
         this.showSync(true);
         
         try {
-            const employees = await window.seatableLoader.loadEmployees();
+            const employees = await seatableLoader.loadEmployees();
             
             if (employees && employees.length > 0) {
-                this.employees = employees;
+                this.allEmployees = employees;
+                this.employees = [...this.allEmployees];
                 this.filteredEmployees = [...this.employees];
                 this.updateLastUpdateTime();
                 console.log('Загружено сотрудников:', this.employees.length);
-                console.log('Первый сотрудник:', this.employees[0]);
             } else {
+                this.allEmployees = [];
                 this.employees = [];
                 this.filteredEmployees = [];
                 this.showError('Нет данных для отображения');
             }
             
-            this.updateFilters();
+            this.updateAllFilters();
             this.renderEmployees();
             this.updateTotalCount();
             
         } catch (error) {
             console.error('Ошибка:', error);
-            this.showError('Ошибка загрузки данных');
+            this.showError('Ошибка загрузки данных: ' + error.message);
         } finally {
             this.showLoading(false);
             this.showSync(false);
         }
     }
 
-   updateFilters() {
-    // Диагностика - посмотрим, какие поля заполнены
-    console.log('=== ДИАГНОСТИКА ПОЛЕЙ ===');
-    console.log('Пример сотрудника:', this.employees[0]);
-    console.log('management (Управление):', this.employees[0]?.management);
-    console.log('structuralUnit (Структурное подразделение):', this.employees[0]?.structuralUnit);
-    console.log('legalEntity (Юрлицо):', this.employees[0]?.legalEntity);
-    
-    // Собираем уникальные значения из каждого поля
-    const managements = [...new Set(this.employees.map(e => e.management).filter(Boolean))].sort();
-    const structuralUnits = [...new Set(this.employees.map(e => e.structuralUnit).filter(Boolean))].sort();
-    const legalEntities = [...new Set(this.employees.map(e => e.legalEntity).filter(Boolean))].sort();
-    
-    console.log('Управления (management):', managements);
-    console.log('Структурные подразделения (structuralUnit):', structuralUnits);
-    console.log('Юридические лица (legalEntity):', legalEntities);
-    
-    // Заполняем фильтры
-    const deptSelect = this.departmentFilter;
-    if (deptSelect) {
-        deptSelect.innerHTML = '<option value="all">Все отделы/сектора</option>';
-        managements.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item;
-            option.textContent = item;
-            deptSelect.appendChild(option);
-        });
+    updateAllFilters() {
+        this.updateLegalEntityFilter();
+        this.updateManagementFilter();
+        this.updateStructuralUnitFilter();
     }
-    
-    const structSelect = this.structuralUnitFilter;
-    if (structSelect) {
-        structSelect.innerHTML = '<option value="all">Все структурные подразделения</option>';
-        structuralUnits.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item;
-            option.textContent = item;
-            structSelect.appendChild(option);
-        });
+
+    updateLegalEntityFilter() {
+        const legalEntities = [...new Set(this.allEmployees.map(e => e.legalEntity).filter(Boolean))].sort();
+        const legalSelect = this.legalEntityFilter;
+        if (legalSelect) {
+            const currentValue = legalSelect.value;
+            legalSelect.innerHTML = '<option value="all">Все юридические лица</option>';
+            legalEntities.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                legalSelect.appendChild(option);
+            });
+            if (currentValue !== 'all' && legalEntities.includes(currentValue)) {
+                legalSelect.value = currentValue;
+            } else {
+                legalSelect.value = 'all';
+            }
+        }
     }
-    
-    const legalSelect = this.legalEntityFilter;
-    if (legalSelect) {
-        legalSelect.innerHTML = '<option value="all">Все юридические лица</option>';
-        legalEntities.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item;
-            option.textContent = item;
-            legalSelect.appendChild(option);
-        });
+
+    updateManagementFilter() {
+        const selectedLegalEntity = this.legalEntityFilter ? this.legalEntityFilter.value : 'all';
+        
+        let filteredByLegal = this.allEmployees;
+        if (selectedLegalEntity !== 'all') {
+            filteredByLegal = this.allEmployees.filter(emp => emp.legalEntity === selectedLegalEntity);
+        }
+        
+        const managements = [...new Set(filteredByLegal.map(e => e.management).filter(Boolean))].sort();
+        
+        const deptSelect = this.departmentFilter;
+        if (deptSelect) {
+            const currentValue = deptSelect.value;
+            deptSelect.innerHTML = '<option value="all">Все управления</option>';
+            managements.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                deptSelect.appendChild(option);
+            });
+            if (currentValue !== 'all' && managements.includes(currentValue)) {
+                deptSelect.value = currentValue;
+            } else {
+                deptSelect.value = 'all';
+            }
+        }
     }
-}
+
+    updateStructuralUnitFilter() {
+        const selectedLegalEntity = this.legalEntityFilter ? this.legalEntityFilter.value : 'all';
+        const selectedManagement = this.departmentFilter ? this.departmentFilter.value : 'all';
+        
+        let filteredByLegal = this.allEmployees;
+        if (selectedLegalEntity !== 'all') {
+            filteredByLegal = filteredByLegal.filter(emp => emp.legalEntity === selectedLegalEntity);
+        }
+        
+        let filteredByManagement = filteredByLegal;
+        if (selectedManagement !== 'all') {
+            filteredByManagement = filteredByLegal.filter(emp => emp.management === selectedManagement);
+        }
+        
+        const structuralUnits = [...new Set(filteredByManagement.map(e => e.structuralUnit).filter(Boolean))].sort();
+        
+        const structSelect = this.structuralUnitFilter;
+        if (structSelect) {
+            const currentValue = structSelect.value;
+            structSelect.innerHTML = '<option value="all">Все структурные подразделения</option>';
+            structuralUnits.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                structSelect.appendChild(option);
+            });
+            if (currentValue !== 'all' && structuralUnits.includes(currentValue)) {
+                structSelect.value = currentValue;
+            } else {
+                structSelect.value = 'all';
+            }
+        }
+    }
+
+    applyFilters() {
+        const selectedLegalEntity = this.legalEntityFilter ? this.legalEntityFilter.value : 'all';
+        const selectedManagement = this.departmentFilter ? this.departmentFilter.value : 'all';
+        const selectedStructuralUnit = this.structuralUnitFilter ? this.structuralUnitFilter.value : 'all';
+        const searchTerm = this.searchInput ? this.searchInput.value.toLowerCase() : '';
+        
+        this.employees = this.allEmployees.filter(emp => {
+            if (selectedLegalEntity !== 'all' && emp.legalEntity !== selectedLegalEntity) return false;
+            if (selectedManagement !== 'all' && emp.management !== selectedManagement) return false;
+            if (selectedStructuralUnit !== 'all' && emp.structuralUnit !== selectedStructuralUnit) return false;
+            
+            if (searchTerm) {
+                const searchableText = [
+                    emp.name, emp.position, emp.management, 
+                    emp.structuralUnit, emp.legalEntity, emp.phone,
+                    emp.internalPhone, emp.office
+                ].filter(Boolean).join(' ').toLowerCase();
+                return searchableText.includes(searchTerm);
+            }
+            
+            return true;
+        });
+        
+        this.filteredEmployees = [...this.employees];
+        
+        const sortBy = this.sortBy ? this.sortBy.value : 'name';
+        if (sortBy === 'name') {
+            this.filteredEmployees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        } else if (sortBy === 'position') {
+            this.filteredEmployees.sort((a, b) => (a.position || '').localeCompare(b.position || ''));
+        } else if (sortBy === 'department') {
+            this.filteredEmployees.sort((a, b) => (a.management || '').localeCompare(b.management || ''));
+        }
+        
+        this.renderEmployees();
+        this.updateTotalCount();
+    }
+
+    onLegalEntityChange() {
+        this.updateManagementFilter();
+        this.updateStructuralUnitFilter();
+        this.applyFilters();
+    }
+
+    onManagementChange() {
+        this.updateStructuralUnitFilter();
+        this.applyFilters();
+    }
+
+    onStructuralUnitChange() {
+        this.applyFilters();
+    }
 
     renderEmployees() {
         if (!this.employeesGrid) return;
@@ -161,42 +242,21 @@ class PhoneDirectory {
             this.employeesGrid.innerHTML = '';
             if (this.noResultsDiv) {
                 this.noResultsDiv.style.display = 'block';
-                this.noResultsDiv.innerHTML = `
-                    <i class="fas fa-phone-slash"></i>
-                    <h3>Ничего не найдено</h3>
-                    <p>Попробуйте изменить параметры поиска</p>
-                `;
             }
             return;
         }
         
         if (this.noResultsDiv) this.noResultsDiv.style.display = 'none';
         
-        // Сортировка
-        let sorted = [...this.filteredEmployees];
-        const sortBy = this.sortBy ? this.sortBy.value : 'name';
+        this.employeesGrid.innerHTML = this.filteredEmployees.map(emp => this.renderEmployeeCard(emp)).join('');
         
-        if (sortBy === 'name') {
-            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        } else if (sortBy === 'position') {
-            sorted.sort((a, b) => (a.position || '').localeCompare(b.position || ''));
-        } else if (sortBy === 'department') {
-            sorted.sort((a, b) => (a.management || '').localeCompare(b.management || ''));
-        }
-        
-        // Рендерим карточки
-        this.employeesGrid.innerHTML = sorted.map(emp => this.renderEmployeeCard(emp)).join('');
-        
-        // Добавляем обработчики для карточек
         document.querySelectorAll('.employee-card').forEach(card => {
             card.addEventListener('click', () => {
                 const id = card.dataset.id;
-                const employee = this.employees.find(emp => emp.id === id);
+                const employee = this.filteredEmployees.find(emp => emp.id === id);
                 if (employee) this.openModal(employee);
             });
         });
-        
-        console.log('Отображено карточек:', sorted.length);
     }
 
     renderEmployeeCard(emp) {
@@ -260,7 +320,6 @@ class PhoneDirectory {
         
         this.modal.classList.add('active');
         
-        // Добавляем обработчики для кнопок внутри модального окна
         const callBtn = this.modal.querySelector('.contact-action-btn.call');
         if (callBtn && emp.phone) {
             callBtn.onclick = () => {
@@ -281,47 +340,6 @@ class PhoneDirectory {
         }
     }
 
-    filterAndSearch() {
-        const searchTerm = this.searchInput ? this.searchInput.value.toLowerCase() : '';
-        const management = this.departmentFilter ? this.departmentFilter.value : 'all';
-        const structuralUnit = this.structuralUnitFilter ? this.structuralUnitFilter.value : 'all';
-        const legalEntity = this.legalEntityFilter ? this.legalEntityFilter.value : 'all';
-        
-        console.log('Фильтрация:', { searchTerm, management, structuralUnit, legalEntity, totalEmployees: this.employees.length });
-        
-        this.filteredEmployees = this.employees.filter(emp => {
-            // Поиск по тексту
-            const searchableText = [
-                emp.name,
-                emp.position,
-                emp.management,
-                emp.structuralUnit,
-                emp.legalEntity,
-                emp.phone,
-                emp.internalPhone,
-                emp.office
-            ].filter(Boolean).join(' ').toLowerCase();
-            
-            const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
-            
-            // Фильтр по управлению
-            const matchesManagement = management === 'all' || emp.management === management;
-            
-            // Фильтр по структурному подразделению
-            const matchesStructuralUnit = structuralUnit === 'all' || emp.structuralUnit === structuralUnit;
-            
-            // Фильтр по юридическому лицу
-            const matchesLegalEntity = legalEntity === 'all' || emp.legalEntity === legalEntity;
-            
-            return matchesSearch && matchesManagement && matchesStructuralUnit && matchesLegalEntity;
-        });
-        
-        console.log('Отфильтровано сотрудников:', this.filteredEmployees.length);
-        
-        this.renderEmployees();
-        this.updateTotalCount();
-    }
-
     resetFilters() {
         if (this.searchInput) this.searchInput.value = '';
         if (this.departmentFilter) this.departmentFilter.value = 'all';
@@ -329,7 +347,9 @@ class PhoneDirectory {
         if (this.legalEntityFilter) this.legalEntityFilter.value = 'all';
         if (this.sortBy) this.sortBy.value = 'name';
         if (this.clearSearchBtn) this.clearSearchBtn.style.display = 'none';
-        this.filterAndSearch();
+        
+        this.updateAllFilters();
+        this.applyFilters();
     }
 
     updateTotalCount() {
@@ -379,7 +399,7 @@ class PhoneDirectory {
 
     bindEvents() {
         if (this.searchInput) {
-            this.searchInput.addEventListener('input', () => this.filterAndSearch());
+            this.searchInput.addEventListener('input', () => this.applyFilters());
             this.searchInput.addEventListener('input', () => {
                 if (this.clearSearchBtn) {
                     this.clearSearchBtn.style.display = this.searchInput.value ? 'flex' : 'none';
@@ -387,20 +407,20 @@ class PhoneDirectory {
             });
         }
         
+        if (this.legalEntityFilter) {
+            this.legalEntityFilter.addEventListener('change', () => this.onLegalEntityChange());
+        }
+        
         if (this.departmentFilter) {
-            this.departmentFilter.addEventListener('change', () => this.filterAndSearch());
+            this.departmentFilter.addEventListener('change', () => this.onManagementChange());
         }
         
         if (this.structuralUnitFilter) {
-            this.structuralUnitFilter.addEventListener('change', () => this.filterAndSearch());
-        }
-        
-        if (this.legalEntityFilter) {
-            this.legalEntityFilter.addEventListener('change', () => this.filterAndSearch());
+            this.structuralUnitFilter.addEventListener('change', () => this.onStructuralUnitChange());
         }
         
         if (this.sortBy) {
-            this.sortBy.addEventListener('change', () => this.renderEmployees());
+            this.sortBy.addEventListener('change', () => this.applyFilters());
         }
         
         if (this.resetFiltersBtn) {
@@ -411,7 +431,7 @@ class PhoneDirectory {
             this.clearSearchBtn.addEventListener('click', () => {
                 if (this.searchInput) {
                     this.searchInput.value = '';
-                    this.filterAndSearch();
+                    this.applyFilters();
                     this.clearSearchBtn.style.display = 'none';
                 }
             });
@@ -423,7 +443,6 @@ class PhoneDirectory {
     }
 }
 
-// Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM загружен, создаем приложение...');
     window.phoneDirectory = new PhoneDirectory();

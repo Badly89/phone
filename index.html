@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Телефонный справочник - Администрация города</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='50' text-anchor='middle' dy='.35em' font-size='50'%3E📞%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -42,7 +43,7 @@
                 <div class="filter-group">
                     <i class="fas fa-building"></i>
                     <select id="departmentFilter">
-                        <option value="all">Все отделы</option>
+                        <option value="all">Все управления</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -54,7 +55,7 @@
                 <div class="filter-group">
                     <i class="fas fa-balance-scale"></i>
                     <select id="legalEntityFilter">
-                        <option value="all">Все юрлица</option>
+                        <option value="all">Все юридические лица</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -92,7 +93,6 @@
         </footer>
     </div>
 
-    <!-- Модальное окно -->
     <div id="contactModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -103,7 +103,6 @@
         </div>
     </div>
 
-    <script src="seatable-loader.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>
