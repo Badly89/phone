@@ -767,6 +767,218 @@ class AdminPanel {
 
   // ========== SEATABLE ИНТЕГРАЦИЯ ==========
 
+
+  // Добавьте в класс AdminPanel:
+
+initSeatableTab() {
+    const connectBtn = document.getElementById('connectSeaTableBtn');
+    const syncBtn = document.getElementById('syncSeaTableBtn');
+    const disconnectBtn = document.getElementById('disconnectSeaTableBtn');
+    const seatableEnabled = document.getElementById('seatableEnabled');
+    const seatableServer = document.getElementById('seatableServer');
+    const seatableToken = document.getElementById('seatableToken');
+    const seatableBaseId = document.getElementById('seatableBaseId');
+    const seatableTableName = document.getElementById('seatableTableName');
+    
+    // Загружаем сохраненные настройки
+    const settings = localStorage.getItem('seatable_settings');
+    if (settings) {
+        const parsed = JSON.parse(settings);
+        if (seatableEnabled) seatableEnabled.checked = parsed.isConnected || false;
+        if (seatableServer) seatableServer.value = parsed.baseUrl || 'https://cloud.seatable.io';
+        if (seatableToken) seatableToken.value = parsed.apiToken || '';
+        if (seatableBaseId) seatableBaseId.value = parsed.baseUuid || '';
+        if (seatableTableName) seatableTableName.value = parsed.tableName || 'Сотрудники';
+    }
+    
+    // Обновляем UI в зависимости от статуса подключения
+    this.updateSeatableUI();
+    
+    if (connectBtn) {
+        connectBtn.onclick = () => this.showSeatableLogin();
+    }
+    
+    if (syncBtn) {
+        syncBtn.onclick = () => this.syncWithSeatable();
+    }
+    
+    if (disconnectBtn) {
+        disconnectBtn.onclick = () => this.disconnectSeatable();
+    }
+}
+
+updateSeatableUI() {
+    const isConnected = window.seatableIntegration && window.seatableIntegration.isConnected;
+    
+    const connectBtn = document.getElementById('connectSeaTableBtn');
+    const syncBtn = document.getElementById('syncSeaTableBtn');
+    const disconnectBtn = document.getElementById('disconnectSeaTableBtn');
+    const statusDiv = document.getElementById('seatableStatus');
+    const connectionStatus = document.getElementById('seatableConnectionStatus');
+    
+    if (connectBtn) connectBtn.style.display = isConnected ? 'none' : 'inline-flex';
+    if (syncBtn) syncBtn.style.display = isConnected ? 'inline-flex' : 'none';
+    if (disconnectBtn) disconnectBtn.style.display = isConnected ? 'inline-flex' : 'none';
+    
+    if (statusDiv) {
+        if (isConnected) {
+            statusDiv.innerHTML = '<div class="success-message"><i class="fas fa-check-circle"></i> Подключено к SeaTable. Данные синхронизируются автоматически.</div>';
+        } else {
+            statusDiv.innerHTML = '<div class="info-message"><i class="fas fa-info-circle"></i> Не подключено. Настройте подключение к SeaTable.</div>';
+        }
+    }
+    
+    if (connectionStatus) {
+        if (isConnected) {
+            connectionStatus.innerHTML = '<div class="success-message"><i class="fas fa-check-circle"></i> Статус: Подключено</div>';
+        } else {
+            connectionStatus.innerHTML = '<div class="warning-message"><i class="fas fa-exclamation-triangle"></i> Статус: Не подключено</div>';
+        }
+    }
+}
+
+async showSeatableLogin() {
+    const modal = document.getElementById('seatableLoginModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    const form = document.getElementById('seatableLoginForm');
+    const errorDiv = document.getElementById('seatableLoginError');
+    const cancelBtn = document.getElementById('cancelSeatableLogin');
+    const closeBtn = document.querySelector('.seatable-login-close');
+    
+    const hideModal = () => {
+        modal.style.display = 'none';
+        if (form) form.reset();
+        if (errorDiv) errorDiv.style.display = 'none';
+    };
+    
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('seatableEmail').value;
+        const password = document.getElementById('seatablePassword').value;
+        
+        if (!email || !password) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Введите email и пароль';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+        
+        try {
+            // Пытаемся получить API токен через логин/пароль
+            const response = await fetch('https://cloud.seatable.io/api/v2.1/account/token/', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ username: email, password: password })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const apiToken = data.token;
+                
+                // Сохраняем токен и подключаемся
+                const server = document.getElementById('seatableServer').value;
+                const baseId = document.getElementById('seatableBaseId').value;
+                const tableName = document.getElementById('seatableTableName').value;
+                
+                window.seatableIntegration.baseUrl = server;
+                const success = await window.seatableIntegration.connect(apiToken, baseId, tableName);
+                
+                if (success) {
+                    hideModal();
+                    this.updateSeatableUI();
+                    
+                    // Синхронизируем данные
+                    await this.syncWithSeatable();
+                    
+                    // Обновляем основное приложение
+                    if (window.app) {
+                        await window.app.loadEmployees();
+                    }
+                    
+                    alert('Успешное подключение к SeaTable! Данные синхронизированы.');
+                } else {
+                    throw new Error('Не удалось подключиться');
+                }
+            } else {
+                throw new Error('Неверный email или пароль');
+            }
+        } catch (error) {
+            if (errorDiv) {
+                errorDiv.textContent = error.message || 'Ошибка подключения';
+                errorDiv.style.display = 'block';
+            }
+        }
+    };
+    
+    form.onsubmit = handleLogin;
+    cancelBtn.onclick = hideModal;
+    if (closeBtn) closeBtn.onclick = hideModal;
+    
+    // Закрытие по клику вне окна
+    modal.onclick = (e) => {
+        if (e.target === modal) hideModal();
+    };
+}
+
+async syncWithSeatable() {
+    if (!window.seatableIntegration || !window.seatableIntegration.isConnected) {
+        alert('Сначала подключитесь к SeaTable');
+        return false;
+    }
+    
+    const syncIndicator = document.getElementById('syncIndicator');
+    if (syncIndicator) syncIndicator.style.display = 'flex';
+    
+    try {
+        const employees = await window.seatableIntegration.getAllEmployees();
+        
+        if (employees && employees.length > 0) {
+            // Очищаем локальную базу
+            if (window.app && window.app.db) {
+                await window.app.db.clearAllData();
+                
+                // Добавляем сотрудников
+                for (const emp of employees) {
+                    await window.app.db.addEmployee(emp);
+                }
+                
+                // Обновляем отображение
+                await window.app.loadEmployees();
+                
+                alert(`Синхронизировано ${employees.length} сотрудников`);
+            }
+        } else {
+            alert('Нет данных для синхронизации');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Ошибка синхронизации:', error);
+        alert('Ошибка синхронизации: ' + error.message);
+        return false;
+    } finally {
+        if (syncIndicator) syncIndicator.style.display = 'none';
+    }
+}
+
+async disconnectSeatable() {
+    if (confirm('Вы уверены, что хотите отключить интеграцию с SeaTable?')) {
+        window.seatableIntegration.disconnect();
+        this.updateSeatableUI();
+        
+        if (window.app) {
+            await window.app.loadEmployees();
+        }
+        
+        alert('Интеграция с SeaTable отключена');
+    }
+}
+
   async checkSeaTableConnection() {
     const connected = await this.db.getSetting('seatable_connected', false);
     const baseId = await this.db.getSetting('seatable_base_id', '');

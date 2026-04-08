@@ -1,11 +1,11 @@
 // seatable-config.js
 window.SEATABLE_CONFIG = {
   // URL вашего корпоративного сервера (без /workspace/...)
-  serverUrl: 'https://ditable.yanao.ru',
+  serverUrl: 'https://ditable.yanao.ru/dtable/links/',
 
   // ID базы данных (нужно получить)
   // Попробуйте сначала значение 'phones' — это часто работает
-  baseId: 'eb5e4e0d-450a-40d7-bf34-befe5c401f9c',
+  baseId: 'bbd3918f5ced4718ac65',
 
   // Название таблицы (как в URL)
   tableName: 'Test',
