@@ -1,3 +1,4 @@
+# backend/Dockerfile
 FROM python:3.11-slim
 
 # Устанавливаем часовой пояс Екатеринбург
@@ -13,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код
 COPY . .
 
-# Создаём пользователя для безопасности
+# Создаём непривилегированного пользователя
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
