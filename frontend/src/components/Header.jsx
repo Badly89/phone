@@ -20,9 +20,7 @@ const Header = ({ totalCount, lastUpdate }) => {
                     </div>
                 </div>
             </header>
-            <div className="update-info">
-                <i className="fas fa-sync-alt"></i> Последнее обновление: {lastUpdate.toLocaleString('ru-RU')}
-            </div>
+            
         </>
     );
 };

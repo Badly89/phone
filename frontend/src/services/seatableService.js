@@ -117,8 +117,16 @@ class SeaTableService {
         }
     }
 
-    mapEmployees(rows) {
-        return rows.map(row => ({
+   mapEmployees(rows) {
+    console.log('=== НАЧАЛО МАППИНГА ===');
+    console.log('Получено строк:', rows.length);
+    
+    if (rows.length > 0) {
+        console.log('Первая строка (сырая):', rows[0]);
+    }
+    
+    const mapped = rows.map(row => {
+        const employee = {
             id: row._id,
             name: row[this.keys.name] || '',
             position: row[this.keys.position] || '',
@@ -128,8 +136,19 @@ class SeaTableService {
             phone: row[this.keys.phone] || '',
             internalPhone: row[this.keys.internalPhone] || '',
             office: row[this.keys.office] || ''
-        }));
-    }
+        };
+        
+        // Логируем первого сотрудника
+        if (rows.indexOf(row) === 107) {
+            console.log('Первый сотрудник после маппинга:', employee);
+        }
+        
+        return employee;
+    });
+    
+    console.log('Всего сотрудников после маппинга:', mapped.length);
+    return mapped;
+}
 
     async getFilters() {
         const employees = await this.fetchEmployees();

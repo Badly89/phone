@@ -33,13 +33,13 @@ const SearchFilters = ({
             
             <div className="filters">
                 <div className="filter-group">
-                    <label><i className="fas fa-building"></i> Управление</label>
+                    <label><i className="fas fa-building"></i>Отделы / сектора</label>
                     <select 
                         value={selectedManagement} 
                         onChange={(e) => setSelectedManagement(e.target.value)}
                         className="filter-select"
                     >
-                        <option value="all">Все управления</option>
+                        <option value="all">Все</option>
                         {filters.managements.map(m => (
                             <option key={m} value={m}>{m}</option>
                         ))}
@@ -47,7 +47,7 @@ const SearchFilters = ({
                 </div>
                 
                 <div className="filter-group">
-                    <label><i className="fas fa-sitemap"></i> Подразделение</label>
+                    <label><i className="fas fa-sitemap"></i> Структурные подразделения</label>
                     <select 
                         value={selectedStructuralUnit} 
                         onChange={(e) => setSelectedStructuralUnit(e.target.value)}
