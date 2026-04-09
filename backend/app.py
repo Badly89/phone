@@ -8,9 +8,6 @@ import traceback
 from config import Config
 from seatable_client import SeaTableClient
 
-
-app = FastAPI(title="Phonebook API", lifespan=lifespan)
-
 # Настройка логирования
 logging.basicConfig(
     level=logging.DEBUG,
