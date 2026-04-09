@@ -3,51 +3,23 @@ services:
     build: ./backend
     container_name: phonebook-backend
     restart: unless-stopped
-    environment:
-      - TZ=Asia/Yekaterinburg
+    ports:
+      - "8001:8000"      # Хост:8001 -> Контейнер:8000
     env_file:
       - ./backend/.env
-    expose:
-      - "8000"
     networks:
       - phonebook-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   frontend:
     build: ./frontend
     container_name: phonebook-frontend
     restart: unless-stopped
     ports:
-      - "8989:8989"
+      - "8989:8989"      # Хост:8989 -> Контейнер:8989
     depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      - TZ=Asia/Yekaterinburg
-      - VITE_API_URL=http://10.87.0.59:8989/api
+      - backend
     networks:
       - phonebook-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 networks:
   phonebook-network:
