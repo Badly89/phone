@@ -28,15 +28,15 @@ docker-compose up -d
 
 # Ждём запуска
 echo -e "${YELLOW}⏳ Ждём запуска контейнеров...${NC}"
-sleep 5
+sleep 10
 
 # Проверяем статус
 echo -e "${GREEN}✅ Статус контейнеров:${NC}"
 docker-compose ps
 
-# Проверяем логи
-echo -e "${GREEN}📋 Последние логи:${NC}"
-docker-compose logs --tail=20
+# Проверяем логи backend
+echo -e "${GREEN}📋 Логи backend:${NC}"
+docker-compose logs --tail=20 backend
 
 # Проверяем доступность
 echo -e "${GREEN}🌐 Проверяем доступность:${NC}"

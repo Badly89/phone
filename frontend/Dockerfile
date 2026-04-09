@@ -1,4 +1,3 @@
-# frontend/Dockerfile
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -15,7 +14,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Устанавливаем часовой пояс Екатеринбург
-RUN apk add --no-cache tzdata && \
+RUN apk add --no-cache tzdata curl && \
     cp /usr/share/zoneinfo/Asia/Yekaterinburg /etc/localtime && \
     echo "Asia/Yekaterinburg" > /etc/timezone && \
     apk del tzdata
@@ -30,5 +29,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 RUN nginx -t
 
 EXPOSE 8989
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8989/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
