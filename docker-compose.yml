@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: phonebook-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - TZ=Asia/Yekaterinburg
+    expose:
+      - "5000"
+    networks:
+      - phonebook-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build: ./frontend
+    container_name: phonebook-frontend
+    restart: unless-stopped
+    ports:
+      - "8989:8989"
+    depends_on:
+      - backend
+    environment:
+      - TZ=Asia/Yekaterinburg
+    networks:
+      - phonebook-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  phonebook-network:
+    driver: bridge
