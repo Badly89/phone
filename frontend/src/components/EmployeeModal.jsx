@@ -5,10 +5,10 @@ const EmployeeModal = ({ employee, onClose }) => {
     const [shouldRender, setShouldRender] = useState(true);
 
     useEffect(() => {
-        // Анимация появления
+        // Запускаем анимацию появления
         setTimeout(() => setIsAnimating(true), 10);
         
-        // Обработчик клавиши Escape
+        // Закрытие по Escape
         const handleEsc = (e) => {
             if (e.key === 'Escape') handleClose();
         };
@@ -28,7 +28,7 @@ const EmployeeModal = ({ employee, onClose }) => {
         setTimeout(() => {
             setShouldRender(false);
             onClose();
-        }, 300);
+        }, 500); // Ждём окончания анимации вращения
     };
 
     const handleBackdropClick = (e) => {
