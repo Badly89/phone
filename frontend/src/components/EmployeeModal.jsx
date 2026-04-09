@@ -47,8 +47,14 @@ const EmployeeModal = ({ employee, onClose }) => {
             <div className={`modal-container ${isAnimating ? 'active' : ''}`}>
                 <div className="modal-card">
                     <div className="modal-header">
-                        <div className="modal-avatar">
-                            <i className="fas fa-user-circle"></i>
+                        <div className='modal-header-wrap'>
+                            <div className="modal-avatar">
+                                <i className="fas fa-user-circle"></i>
+                            </div>
+                            <div className='modal-header-name'>
+                                <h2 className="modal-name">{employee.name || ''}</h2>
+                                <p className="modal-position">{employee.position || ''}</p>
+                            </div>
                         </div>
                         <button className="modal-close" onClick={handleClose}>
                             <i className="fas fa-times"></i>
@@ -56,8 +62,7 @@ const EmployeeModal = ({ employee, onClose }) => {
                     </div>
                     
                     <div className="modal-body">
-                        <h2 className="modal-name">{employee.name || ''}</h2>
-                        <p className="modal-position">{employee.position || ''}</p>
+                        
                         
                         <div className="modal-section">
                             <h4><i className="fas fa-building"></i> Структура подразделения</h4>
