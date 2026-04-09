@@ -5,9 +5,11 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 import traceback
-
 from config import Config
 from seatable_client import SeaTableClient
+
+
+app = FastAPI(title="Phonebook API", lifespan=lifespan)
 
 # Настройка логирования
 logging.basicConfig(
