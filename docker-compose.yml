@@ -7,15 +7,14 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Yekaterinburg
-      - FLASK_ENV=production
     env_file:
       - ./backend/.env
     expose:
-      - "5000"
+      - "8000"
     networks:
       - phonebook-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
