@@ -1,3 +1,4 @@
+# frontend/Dockerfile
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -24,6 +25,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Копируем конфиг nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Проверяем конфигурацию
+RUN nginx -t
 
 EXPOSE 8989
 

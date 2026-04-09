@@ -5,10 +5,11 @@ services:
     build: ./backend
     container_name: phonebook-backend
     restart: unless-stopped
-    env_file:
-      - ./backend/.env
     environment:
       - TZ=Asia/Yekaterinburg
+      - FLASK_ENV=production
+    env_file:
+      - ./backend/.env
     expose:
       - "5000"
     networks:
@@ -31,11 +32,17 @@ services:
     ports:
       - "8989:8989"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       - TZ=Asia/Yekaterinburg
     networks:
       - phonebook-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     logging:
       driver: "json-file"
       options:
