@@ -30,7 +30,7 @@ const EmployeeCard = ({ employee, onClick }) => {
                     </div>
                 )} */}
                 
-                {employee.phone && (
+                {/* {employee.phone && (
                     <div className="detail-row">
                         <i className="fas fa-phone"></i>
                         <span><strong>Телефон:</strong> {employee.phone}</span>
@@ -42,7 +42,7 @@ const EmployeeCard = ({ employee, onClick }) => {
                         <i className="fas fa-phone-alt"></i>
                         <span><strong>Внутренний:</strong> {employee.internalPhone}</span>
                     </div>
-                )}
+                )} */}
                 
                 {employee.office && (
                     <div className="detail-row">
