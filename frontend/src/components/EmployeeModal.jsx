@@ -22,7 +22,7 @@ const EmployeeModal = ({ employee, onClose }) => {
             document.body.style.overflow = '';
         };
     }, []);
-
+    
     const handleClose = () => {
         setIsAnimating(false);
         setTimeout(() => {
@@ -68,7 +68,7 @@ const EmployeeModal = ({ employee, onClose }) => {
                             <h4><i className="fas fa-building"></i> Структура подразделения</h4>
                             {employee.management && (
                                 <div className="modal-info-item">
-                                    <span className="info-label">Управление:</span>
+                                    <span className="info-label">Отдел / сектор:</span>
                                     <span className="info-value">{employee.management}</span>
                                 </div>
                             )}

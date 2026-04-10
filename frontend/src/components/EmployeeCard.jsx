@@ -14,21 +14,21 @@ const EmployeeCard = ({ employee, onClick }) => {
             </div>
             
             <div className="card-details">
-                {(employee.management || employee.structuralUnit) && (
+                {/* {(employee.management || employee.structuralUnit) && (
                     <div className="detail-row">
                         <i className="fas fa-building"></i>
                         <span>
                             <strong>Отдел:</strong> {employee.structuralUnit || employee.management}
                         </span>
                     </div>
-                )}
+                )} */}
                 
-                {employee.legalEntity && (
+                {/* {employee.legalEntity && (
                     <div className="detail-row">
                         <i className="fas fa-balance-scale"></i>
                         <span><strong>Юрлицо:</strong> {employee.legalEntity}</span>
                     </div>
-                )}
+                )} */}
                 
                 {employee.phone && (
                     <div className="detail-row">
